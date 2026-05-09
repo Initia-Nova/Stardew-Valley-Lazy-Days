@@ -18,6 +18,9 @@ namespace LazyDays
         /// <summary>True if the player has already entered the Mines today.</summary>
         public static bool EnteredMinesToday = false;
 
+        /// <summary>True if the player has already entered the Skull Caverns today.</summary>
+        public static bool EnteredSkullCavernsToday = false;
+
         /*********
         ** Public methods
         *********/
@@ -54,6 +57,7 @@ namespace LazyDays
         private static void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
             EnteredMinesToday = false;
+            EnteredSkullCavernsToday = false;
         }
         
         /// <summary>Raised once per second after the game state is updated.</summary>
@@ -61,7 +65,7 @@ namespace LazyDays
         /// <param name="e">The event data.</param>
         private static void OnOneSecondUpdateTicked(object? sender, OneSecondUpdateTickedEventArgs e)
         {
-            if (e.IsMultipleOf(420) && Game1.player.currentLocation is MineShaft)
+            if (e.IsMultipleOf(420) && Game1.player.currentLocation is MineShaft && Game1.shouldTimePass())
             {
                 Game1.player.currentLocation.performTenMinuteUpdate(Game1.timeOfDay);
             }
@@ -88,8 +92,9 @@ namespace LazyDays
             ref bool __result
         )
         {
+            // ModEntry.Monitor.Log($"GameLocationContextID: {__instance.GetLocationContextId()}.", LogLevel.Debug);
             // ModEntry.Monitor.Log($"Preforming action: {action.Join()}.", LogLevel.Debug);
-            if (!who.IsLocalPlayer || __instance is not Mine || !EnteredMinesToday) return true;
+            if (!who.IsLocalPlayer) return true;
             if (__instance.ShouldIgnoreAction(action, who, tileLocation)) return true;
             if (!ArgUtility.TryGet(action, 0, out var value, out var error, allowBlank: true, "string actionType")) return true;
             if (___registeredTileActions.TryGetValue(value, out var value2) == true) return true;
@@ -98,7 +103,13 @@ namespace LazyDays
             {
                 case "MineElevator":
                 case "Mine":
+                    if (__instance is not Mine || !EnteredMinesToday) return true;
                     Game1.drawDialogueNoTyping(ModEntry.Helper.Translation.Get("EnteredMinesToday"));
+                    __result = true;
+                    return false;
+                case "SkullDoor":
+                    if (!EnteredSkullCavernsToday) return true;
+                    Game1.drawDialogueNoTyping(ModEntry.Helper.Translation.Get("EnteredSkullCavernsToday"));
                     __result = true;
                     return false;
             }
@@ -111,6 +122,7 @@ namespace LazyDays
         internal static void Game1EnterMine_Postfix(int whatLevel)
         {
             if (whatLevel > 0 && whatLevel <= 120) EnteredMinesToday = true;
+            if (whatLevel > 120 && whatLevel != 77377) EnteredSkullCavernsToday = true;
         }
 
         /// <summary>
