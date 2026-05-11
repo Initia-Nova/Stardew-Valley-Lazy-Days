@@ -1,7 +1,7 @@
 {
-  "Name": "LazyDays",
+  "Name": "Lazy Days",
   "Author": "InitiaNova",
-  "Version": "1.0.0",
+  "Version": "1.1.0",
   "Description": "Game mechanics overhaul to remove time pressure.",
   "UniqueID": "InitiaNova.LazyDays",
   "EntryDll": "LazyDays.dll",

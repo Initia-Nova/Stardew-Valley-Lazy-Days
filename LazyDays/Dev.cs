@@ -20,6 +20,12 @@ namespace LazyDays
             ModEntry.Helper.Events.Input.ButtonPressed += OnButtonPressed;
         }
 
+        /// <summary>Method called to reverse patches when the mod is disabled. Harmony patches are disabled in bulk.</summary>
+        public static void Unpatch()
+        {
+            ModEntry.Helper.Events.Input.ButtonPressed -= OnButtonPressed;
+        }
+
         /*********
         ** Private methods
         *********/

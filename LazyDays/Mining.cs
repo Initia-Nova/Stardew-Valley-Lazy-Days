@@ -1,6 +1,7 @@
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Locations;
@@ -18,8 +19,8 @@ namespace LazyDays
         /// <summary>True if the player has already entered the Mines today.</summary>
         public static bool EnteredMinesToday = false;
 
-        /// <summary>True if the player has already entered the Skull Caverns today.</summary>
-        public static bool EnteredSkullCavernsToday = false;
+        /// <summary>True if the player has already entered the Skull Cavern today.</summary>
+        public static bool EnteredSkullCavernToday = false;
 
         /*********
         ** Public methods
@@ -45,6 +46,15 @@ namespace LazyDays
             );
             ModEntry.Helper.Events.GameLoop.DayStarted += OnDayStarted;
             ModEntry.Helper.Events.GameLoop.OneSecondUpdateTicked += OnOneSecondUpdateTicked;
+            EnteredMinesToday = false;
+            EnteredSkullCavernToday = false;
+        }
+
+        /// <summary>Method called to reverse patches when the mod is disabled. Harmony patches are disabled in bulk.</summary>
+        public static void Unpatch()
+        {
+            ModEntry.Helper.Events.GameLoop.DayStarted -= OnDayStarted;
+            ModEntry.Helper.Events.GameLoop.OneSecondUpdateTicked -= OnOneSecondUpdateTicked;
         }
 
         /*********
@@ -57,7 +67,7 @@ namespace LazyDays
         private static void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
             EnteredMinesToday = false;
-            EnteredSkullCavernsToday = false;
+            EnteredSkullCavernToday = false;
         }
         
         /// <summary>Raised once per second after the game state is updated.</summary>
@@ -92,8 +102,7 @@ namespace LazyDays
             ref bool __result
         )
         {
-            // ModEntry.Monitor.Log($"GameLocationContextID: {__instance.GetLocationContextId()}.", LogLevel.Debug);
-            // ModEntry.Monitor.Log($"Preforming action: {action.Join()}.", LogLevel.Debug);
+            if(ModEntry.Config.Dev) ModEntry.Monitor.Log($"Preforming action: {action.Join()}.", LogLevel.Debug);
             if (!who.IsLocalPlayer) return true;
             if (__instance.ShouldIgnoreAction(action, who, tileLocation)) return true;
             if (!ArgUtility.TryGet(action, 0, out var value, out var error, allowBlank: true, "string actionType")) return true;
@@ -103,13 +112,13 @@ namespace LazyDays
             {
                 case "MineElevator":
                 case "Mine":
-                    if (__instance is not Mine || !EnteredMinesToday) return true;
+                    if (__instance is not Mine || !EnteredMinesToday || !ModEntry.Config.LimitMinesEntry) return true;
                     Game1.drawDialogueNoTyping(ModEntry.Helper.Translation.Get("EnteredMinesToday"));
                     __result = true;
                     return false;
                 case "SkullDoor":
-                    if (!EnteredSkullCavernsToday) return true;
-                    Game1.drawDialogueNoTyping(ModEntry.Helper.Translation.Get("EnteredSkullCavernsToday"));
+                    if (!EnteredSkullCavernToday || !ModEntry.Config.LimitSkullCavernEntry) return true;
+                    Game1.drawDialogueNoTyping(ModEntry.Helper.Translation.Get("EnteredSkullCavernToday"));
                     __result = true;
                     return false;
             }
@@ -122,7 +131,7 @@ namespace LazyDays
         internal static void Game1EnterMine_Postfix(int whatLevel)
         {
             if (whatLevel > 0 && whatLevel <= 120) EnteredMinesToday = true;
-            if (whatLevel > 120 && whatLevel != 77377) EnteredSkullCavernsToday = true;
+            if (whatLevel > 120 && whatLevel != 77377) EnteredSkullCavernToday = true;
         }
 
         /// <summary>
@@ -135,8 +144,12 @@ namespace LazyDays
         /// <returns>True if the original method should run.</returns>
         internal static bool MineShaftCheckAction_Prefix(MineShaft __instance, Location tileLocation, Farmer who, ref bool __result)
         {
-            // ModEntry.Monitor.Log($"Checking action at {tileLocation.X}, {tileLocation.Y}.", LogLevel.Debug);
-            if (who.IsLocalPlayer && __instance.getTileIndexAt(tileLocation, "Buildings", "mine") == 112 && __instance.mineLevel <= 120)
+            if (
+                who.IsLocalPlayer &&
+                ModEntry.Config.LimitMinesEntry &&
+                __instance.getTileIndexAt(tileLocation, "Buildings", "mine") == 112 &&
+                __instance.mineLevel <= 120
+            )
             {
                 Response[] answerChoices = new Response[2]
                 {
